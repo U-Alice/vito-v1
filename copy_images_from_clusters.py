@@ -1,29 +1,48 @@
 import os
+import sqlite3
 import shutil
 
-def copy_images_from_clusters(cluster_folder, dataset_folder):
-    # Get list of cluster folders
-    cluster_folders = [folder for folder in os.listdir(cluster_folder) if os.path.isdir(os.path.join(cluster_folder, folder))]
+# Remove all files in the 'dataset' directory
+dataset_dir = 'dataset'
+for filename in os.listdir(dataset_dir):
+    file_path = os.path.join(dataset_dir, filename)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+    except Exception as e:
+        print(f"Error deleting {file_path}: {e}")
 
-    # Iterate through each cluster folder
-    for cluster_name in cluster_folders:
-        cluster_path = os.path.join(cluster_folder, cluster_name)
-        # Get list of image files in the cluster folder
-        image_files = [os.path.join(cluster_path, img) for img in os.listdir(cluster_path) if img.endswith('.jpg')]
-        
-        # Copy each image to the dataset folder
-        for img_file in image_files:
-            shutil.copy(img_file, dataset_folder)
-            print(f"Copying {img_file} to {dataset_folder}")
+# Copy files from 'dataset-clusters' directory to 'dataset' directory
+source_dir = 'dataset-clusters'
+for cluster_dir in os.listdir(source_dir):
+    cluster_path = os.path.join(source_dir, cluster_dir)
+    if os.path.isdir(cluster_path):
+        for filename in os.listdir(cluster_path):
+            file_path = os.path.join(cluster_path, filename)
+            if os.path.isfile(file_path):
+                shutil.copy(file_path, dataset_dir)
 
-    # Remove the 'dataset-clusters' folder after copying images
-    shutil.rmtree(cluster_folder)
-    print(f"Removed {cluster_folder} after copying images.")
+# Remove the 'dataset-clusters' directory
+shutil.rmtree(source_dir)
 
-if __name__ == "__main__":
-    # Folder paths
-    cluster_folder = "dataset-clusters"  # Folder containing cluster folders
-    dataset_folder = "dataset"  # Destination folder to copy images
+# Connect to the SQLite database
+conn = sqlite3.connect('customer_faces_data.db')
+c = conn.cursor()
+
+# Retrieve all records from the 'faces' table
+c.execute("SELECT id, image_path FROM customers")
+rows = c.fetchall()
+
+# Loop through each record
+for row in rows:
+    image_path = row[1]
     
-    # Call function to copy images from cluster folders back to dataset folder
-    copy_images_from_clusters(cluster_folder, dataset_folder)
+    # Check if the associated picture file exists in the 'dataset' folder
+    if not os.path.isfile(image_path):
+        # If the picture file does not exist, delete the record from the 'faces' table
+        c.execute("DELETE FROM customers WHERE id=?", (row[0],))
+        conn.commit()
+        print(f"Deleted record with id {row[0]} because the associated picture '{image_path}' does not exist.")
+
+# Close the database connection
+conn.close()
