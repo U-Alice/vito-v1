@@ -16,7 +16,7 @@ except sqlite3.Error as e:
     print("Sqlite error : ", e)
 
 try:
-    c.execute('''CREATE TABLE IF NOT EXISTS customers(id INTEGER RPIMARY KEY AUTO INCREMENT, customer_uid TEXT, customer_name TEXT, image_path TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS customers(id INTEGER RPIMARY KEY AUTO INCREMENT, customer_uid TEXT, customer_name TEXT, confirm DEFAULT 0)''')
     print("Table customers created successfully")
 except sqlite3.Error as e:
     print("Sqlite error : ", e)
@@ -61,9 +61,8 @@ while True:
             image_count += 1
 
             try:
-                c.execute("INSERT INTO customers(customer_uid, customer_name, image_path) VALUES(?, ?, ?)", (customer_uid, customer_name, f"dataset/data.{customer_uid}.{int(time.time() * 1000)}.jpg"))
+                c.execute("INSERT INTO customers(customer_uid, customer_name) VALUES(?, ?)", (customer_uid, customer_name))
                 conn.commit()
-                print("Image saved to database successfully")
             except sqlite3.Error as e:
                 print("Sqlite error : ", e)
 
